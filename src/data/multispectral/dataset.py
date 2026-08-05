@@ -1,50 +1,83 @@
-import pathlib
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import StandardScaler
+from pathlib import Path
+
 import torch
-from torch.utils.data import Dataset
-from torch.utils.data import random_split
+import rasterio
 
-class SP500Dataset(Dataset):
+from torchvision.datasets import VisionDataset
+from torchvision.datasets.folder import has_file_allowed_extension
 
-    def __init__(self, csv_path:pathlib.Path, lookback:int=60, target_col:str="gspc_target_up_5d"):
-        
-        df = pd.read_csv(csv_path, parse_dates=["Date"])
-        #df = df.dropna().reset_index(drop=True)
+def __default_loader(path):
+    with rasterio.open(path) as src:
+        image = src.read()
 
-        self.feature_cols = [
-            col for col in df.columns
-            if col not in ["Date", target_col]
-        ]
+    return torch.from_numpy(image).float()
 
-        self.target_col = target_col
-        self.input_size = len(self.feature_cols)
-        self.lookback = lookback
+class EuroSATMS(VisionDataset):
+    classes = [
+        "AnnualCrop",
+        "Forest",
+        "HerbaceousVegetation",
+        "Highway",
+        "Industrial",
+        "Pasture",
+        "PermanentCrop",
+        "Residential",
+        "River",
+        "SeaLake"
+    ]
 
-        self.x = df[self.feature_cols].values.astype(np.float32) #args
-        self.y = df[target_col].values.astype(np.float32) #pred
-        #"astype is just to make sure pytorch aint gonna blow up" ~ William Shakespeare
-        self.indices = np.arange(self.lookback - 1, len(self.x))
+    class_to_idx = {
+        cls: idx
+        for idx, cls in enumerate(classes)
+    }
 
-        # self.scaler = StandardScaler()
-        # self.x = self.scaler.fit_transform(self.x)
+    extensions = (".tif", ".tiff")
+
+    def __init__(self, root, transform=None, target_transform=None, transforms=None, loader=__default_loader):
+        super().__init__(root=root, transforms=transforms, transform=transform, target_transform=target_transform)
+
+        root = Path(root)
+        self.loader = loader
+
+        self.samples = []
+        self.targets = []
+
+        for class_name in self.classes:
+            class_dir = root / class_name
+
+            if not class_dir.exists():
+                raise FileNotFoundError(f"ERROR - missing directory: {class_dir}")
+
+            for file in sorted(class_dir.iterdir()):
+                if has_file_allowed_extension(
+                    file.name,
+                    self.extensions,
+                ):
+                    target = self.class_to_idx[class_name]
+
+                    self.samples.append((file, target))
+                    self.targets.append(target)
+
+        if len(self.samples) == 0:
+            raise RuntimeError("ERROR - found 0 images.")
 
     def __len__(self):
+        return len(self.samples)
 
-        return len(self.indices)
+    def __getitem__(self, index):
+            path, target = self.samples[index]
 
-    def __getitem__(self, idx): # the first sample will be +60days
+            image = self.loader(path)
 
-        prediction_day = self.indices[idx]
-        end_idx = prediction_day+1
+            if self.transforms is not None:
+                image, target = self.transforms(image,target)
 
-        x = self.x[end_idx - self.lookback : end_idx]
-        y = self.y[prediction_day]
+            else:
+                if self.transform is not None:
+                    image = self.transform(image)
 
-        return (torch.tensor(x), torch.tensor(y))
+                if self.target_transform is not None:
+                    target = self.target_transform(target)
 
-# dataset = SP500Dataset("D:/projectsGYM/SP500FC/SP500-Forecast/data/trainready/features10_1999-10-07_2026-06-26_id20260707142125.csv")
-# print("here we go")
-# print(np.unique(dataset.y, return_counts=True))
-# print("Positive ratio:", np.nanmean(dataset.y))
+            return image, target
+

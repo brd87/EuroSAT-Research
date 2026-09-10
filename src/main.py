@@ -1,9 +1,8 @@
 import numpy as np
 import torch
 from torch import nn
-from data.dataset import SP500Dataset
-from data.download import RawData
-from data.processing import DataProcessing
+from data.multispectral.dataset import EuroSATMS
+from data.rgb.dataset import get_eurosat_rgb
 from torch.utils.tensorboard import SummaryWriter
 
 from checkpoint import last_and_best, save
@@ -13,6 +12,10 @@ import metrics
 import config
 import dataset_split
 
+from models.ConvNeXt import ConvNeXt
+from models.EfficientNetV2 import EfficientNetV2
+from models.ResNeXt import ResNeXt
+
 
 def main():
     print("START")
@@ -21,29 +24,18 @@ def main():
 
 
     # ----------------- DATA -----------------
-    rawdata = RawData()
-    dataprocessing = DataProcessing(data_df=rawdata.data)
-    #dataprocessing = DataProcessing(csv_path=rawdata.save_path)
-    dataset = SP500Dataset(dataprocessing.save_dsready_path)
-    
-    print(f"SIZES | preprocessed: {len(dataprocessing.preprocessed)} , trainready: {len(dataprocessing.dsready)}")
-    print("Class balance")
-    print(np.unique(dataset.y, return_counts=True))
-    print("Positive ratio:", np.nanmean(dataset.y))
-    
-    input_size = dataset.input_size
+    dataset = get_eurosat_rgb()
 
-    
     # ----------------- MODEL -----------------
-    model = GRUModel(input_size=input_size).to(device)
+    model = ConvNeXt(num_classes=config.CLASSES).to(device)
 
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
 
 
     # ----------------- LOADERS & CHECKPOINT PREP -----------------
     ckpt_path, best_ckpt_path, scaler_path, best_valid_avg_loss, start_epoch, model, optimizer = last_and_best(
-        model, optimizer, input_size, device
+        model, optimizer, device
         )
 
     train_loader, val_loader, test_loader = dataset_split.subset(dataset, scaler_path)
@@ -66,11 +58,11 @@ def main():
         #train_metrics = metrics.classification_metrics(train_result)
         valid_metrics = metrics.classification_metrics(valid_result)
         add_scalars(writer, valid_metrics, valid_avg_loss, train_avg_loss, epoch)
-        save(ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, input_size, optimizer, scaler_path)
+        save(ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
         
         if valid_avg_loss < best_valid_avg_loss:
             best_valid_avg_loss = valid_avg_loss
-            save(best_ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, input_size, optimizer, scaler_path)
+            save(best_ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
 
         #log
         writer.add_scalar("LOSS/TRAIN", train_avg_loss, epoch)

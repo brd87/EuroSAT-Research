@@ -4,7 +4,7 @@ from torch import nn
 
 import config
 
-def last_and_best(model, optimizer, input_size, device, zero_epoch=True):
+def last_and_best(model, optimizer, device, zero_epoch=True):
     model_nameid = model.nameid
     ckpt_dir_path = f"checkpoints/{model_nameid}/{config.EXPERIMENT_NAME}"
     os.makedirs(ckpt_dir_path, exist_ok=True)
@@ -19,10 +19,10 @@ def last_and_best(model, optimizer, input_size, device, zero_epoch=True):
     if os.path.exists(best_ckpt_path):
         best_checkpoint = torch.load(best_ckpt_path, map_location=device, weights_only=False)
 
-        if model_nameid == best_checkpoint["model_nameid"] and input_size == best_checkpoint["input_size"]:
+        if model_nameid == best_checkpoint["model_nameid"]:
             best_valid_avg_loss = best_checkpoint.get("valid_loss", float("inf"))
         else:
-            raise Exception('ERROR: model_nameid and/or input_size are mismatched with the (BEST) saved checkpoint')
+            raise Exception('ERROR: model_nameid is mismatched with the (BEST) saved checkpoint')
         
         print(f"Loaded best checkpoint metadata: epoch={best_checkpoint['epoch']}, val_loss={best_valid_avg_loss}")
 
@@ -31,10 +31,10 @@ def last_and_best(model, optimizer, input_size, device, zero_epoch=True):
           ckpt_path, model, optimizer, device
         )
 
-        if model_nameid == last_model_nameid and input_size == last_input_size:
+        if model_nameid == last_model_nameid:
             start_epoch = last_epoch + 1
         else:
-            raise Exception('ERROR: model_nameid and/or input_size are mismatched with the (LAST) saved checkpoint')
+            raise Exception('ERROR: model_nameid is mismatched with the (LAST) saved checkpoint')
     
     return ckpt_path, best_ckpt_path, scaler_path, best_valid_avg_loss, start_epoch, model, optimizer
 
@@ -49,14 +49,13 @@ def load(path, model:nn.Module, optimizer, device):
     model_nameid = checkpoint["model_nameid"]
     train_loss = checkpoint["train_loss"]
     valid_loss = checkpoint["valid_loss"]
-    input_size = checkpoint["input_size"]
     scaler_path = checkpoint["scaler_path"]
     print(f"Loaded checkpoint from epoch {epoch}, train_loss={train_loss}, valid_loss={valid_loss}")
 
-    return model_nameid, model, optimizer, epoch, input_size, scaler_path
+    return model_nameid, model, optimizer, epoch, scaler_path
 
 
-def save(ckpt_path, model:nn.Model, epoch, train_loss, valid_loss, input_size, optimizer, scaler_path):
+def save(ckpt_path, model:nn.Model, epoch, train_loss, valid_loss, optimizer, scaler_path):
     torch.save({
         "epoch": epoch,
         "model_nameid": model.nameid,
@@ -64,7 +63,6 @@ def save(ckpt_path, model:nn.Model, epoch, train_loss, valid_loss, input_size, o
         "optimizer_state": optimizer.state_dict(),
         "train_loss": train_loss,
         "valid_loss": valid_loss,
-        "input_size": input_size,
         "scaler_path": scaler_path
     }, ckpt_path)
     #print(f"Saved checkpoint: {ckpt_path}")

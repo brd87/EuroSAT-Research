@@ -33,10 +33,9 @@ class EuroSATMS(VisionDataset):
 
     extensions = (".tif", ".tiff")
 
-    def __init__(self, root, transform=None, target_transform=None, transforms=None, loader=__default_loader):
+    def __init__(self, root:Path=None, transform=None, target_transform=None, transforms=None, loader=__default_loader):
         super().__init__(root=root, transforms=transforms, transform=transform, target_transform=target_transform)
 
-        root = Path(root)
         self.loader = loader
 
         self.samples = []
@@ -49,10 +48,7 @@ class EuroSATMS(VisionDataset):
                 raise FileNotFoundError(f"ERROR - missing directory: {class_dir}")
 
             for file in sorted(class_dir.iterdir()):
-                if has_file_allowed_extension(
-                    file.name,
-                    self.extensions,
-                ):
+                if has_file_allowed_extension(file.name, self.extensions):
                     target = self.class_to_idx[class_name]
 
                     self.samples.append((file, target))

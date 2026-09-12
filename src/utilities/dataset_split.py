@@ -20,7 +20,7 @@ def __split(dataset):
 
     train_indices, temp_indices = train_test_split(
         indices,
-        test_size=config.VAL_RATIO + config.TEST_RATIO,
+        train_size=config.TRAIN_RATIO,
         stratify=targets,
         random_state=config.SEED,
     )
@@ -42,7 +42,6 @@ def __split(dataset):
     return train_indices, val_indices, test_indices
 
 def subset(dataset:Dataset, scaler_path):
-    dataset.x = dataset.x.copy()
     train_indices, val_indices, test_indices = __split(dataset)
 
     train_dataset = Subset(dataset, train_indices)

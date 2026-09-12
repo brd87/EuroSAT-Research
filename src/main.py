@@ -1,16 +1,15 @@
 import numpy as np
 import torch
 from torch import nn
-from data.multispectral.dataset import EuroSATMS
-from data.rgb.dataset import get_eurosat_rgb
 from torch.utils.tensorboard import SummaryWriter
 
-from checkpoint import last_and_best, save
-from tensorboard_myutils import add_scalars
-import interface
-import metrics
 import config
-import dataset_split
+from utilities.checkpoint import last_and_best, save
+from utilities.tensorboard_myutils import add_scalars
+import utilities.interface as interface
+import utilities.metrics as metrics
+import utilities.dataset_split as dataset_split
+import utilities.dataset_get as dataset_get
 
 from models.ConvNeXt import ConvNeXt
 from models.EfficientNetV2 import EfficientNetV2
@@ -24,7 +23,7 @@ def main():
 
 
     # ----------------- DATA -----------------
-    dataset = get_eurosat_rgb()
+    dataset = dataset_get.eurosat_rgb()
 
     # ----------------- MODEL -----------------
     model = ConvNeXt(num_classes=config.CLASSES).to(device)

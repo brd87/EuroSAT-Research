@@ -33,7 +33,7 @@ class EuroSATMS(VisionDataset):
 
     extensions = (".tif", ".tiff")
 
-    def __init__(self, root:Path=None, transform=None, target_transform=None, transforms=None, loader=__default_loader):
+    def __init__(self, root:Path=None, transform=None, target_transform=None, transforms=None, loader=None):
         super().__init__(root=root, transforms=transforms, transform=transform, target_transform=target_transform)
 
         self.loader = loader
@@ -63,7 +63,10 @@ class EuroSATMS(VisionDataset):
     def __getitem__(self, index):
             path, target = self.samples[index]
 
-            image = self.loader(path)
+            if self.loader == None:
+                image = __default_loader(path)
+            else:
+                image = self.loader(path)
 
             if self.transforms is not None:
                 image, target = self.transforms(image,target)

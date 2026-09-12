@@ -15,28 +15,30 @@ import torch
 import config
 
 def classification_metrics(result):
-    probs = torch.sigmoid(result["logits"]).numpy().ravel()
-    preds = (probs >= config.CLASSIFICATION_THRESHOLD).astype(float)
-    targets = result["targets"].numpy().ravel()
+    logits = result["logits"]
+    targets = result["targets"]
+
+    preds = torch.argmax(logits, dim=1).numpy()
 
     metrics = {
         "avg_loss": result["avg_loss"],
         "accuracy": accuracy_score(targets, preds),
         "balanced_accuracy": balanced_accuracy_score(targets, preds),
-        "precision": precision_score(targets, preds, zero_division=0),
-        "recall": recall_score(targets, preds, zero_division=0),
-        "f1": f1_score(targets, preds, zero_division=0),
+        "precision": precision_score(targets, preds, average='macro', zero_division=0),
+        "recall": recall_score(targets, preds, average='macro', zero_division=0),
+        "f1": f1_score(targets, preds, average='macro', zero_division=0),
         "mcc": matthews_corrcoef(targets, preds),
-        "baseline": max(targets.mean(), 1 - targets.mean()),
+        "baseline": np.bincount(targets).max() / len(targets),
     }
 
     try:
-        metrics["auc"] = roc_auc_score(targets, probs)
+        probs = torch.softmax(logits, dim=1).numpy()
+        metrics['auc'] = roc_auc_score(targets, probs, average='macro', multi_class='ovr')
     except ValueError:
-        metrics["auc"] = np.nan
+        metrics['auc'] = np.nan
 
     metrics["predictions"] = preds
-    metrics["probabilities"] = probs
+    metrics["probabilities"] = logits
 
     return metrics
 

@@ -18,9 +18,11 @@ def run_epoch(model:nn.Module, device:torch.device, loader:DataLoader, criterion
     with context:
         for x, y in loader:
             x = x.to(device).float()
-            y = y.to(device).float().unsqueeze(1)
+            y = y.to(device)#.float().unsqueeze(1)
 
             logits = model(x)
+            # print("logits:", logits.shape, logits.dtype)
+            # print("y:", y.shape, y.dtype)
             loss = criterion(logits, y)
 
             if training:

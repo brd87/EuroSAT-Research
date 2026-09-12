@@ -7,7 +7,7 @@ from custom_data.multispectral.dataset import EuroSATMS
 from custom_data.multispectral.download import download
 
 
-def get_eurosat_rgb(root:Path = None):
+def eurosat_rgb(root:Path = None):
     if root is None:
             root = Path(__file__).resolve().parents[2] / "data/dsready/rbg"
     root.mkdir(exist_ok = True)
@@ -24,7 +24,7 @@ def get_eurosat_rgb(root:Path = None):
 
     return dataset
 
-def get_eurosat_ms(root:Path = None):
+def eurosat_ms(root:Path = None):
     if root is None:
             root = Path(__file__).resolve().parents[2] / "data/dsready/ms"
     root.mkdir(exist_ok = True)

@@ -9,3 +9,15 @@ VAL_RATIO = 0.2
 CLASSIFICATION_THRESHOLD = 0.5
 SEED = 2137
 EUROSAT_MS_URL = ('https://zenodo.org/records/7711810/files/EuroSAT_MS.zip?download=1')
+
+METRIC_DIRECTIONS = {
+    "avg_loss": "min",
+    "accuracy": "max",
+    "balanced_accuracy": "max",
+    "precision": "max",
+    "recall": "max",
+    "f1": "max",
+    "mcc": "max",
+    "auc": "max",
+    "baseline": None,
+}

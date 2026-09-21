@@ -1,15 +1,11 @@
-import numpy as np
 import torch
 from torch import nn
-from torch.utils.tensorboard import SummaryWriter
 
 import config
-from utilities.checkpoint import last_and_best, save
-from utilities.tensorboard_myutils import add_scalars
-import utilities.interface as interface
-import utilities.metrics as metrics
-import utilities.dataset_split as dataset_split
+import utilities.pipeline as pipeline
 import utilities.dataset_get as dataset_get
+import utilities.metrics as metrics
+import utilities.report as report
 
 from models.ConvNeXt import ConvNeXt
 from models.EfficientNetV2 import EfficientNetV2
@@ -21,67 +17,31 @@ def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print("Device:", device)
 
-
     # ----------------- DATA -----------------
     dataset = dataset_get.eurosat_rgb()
 
     # ----------------- MODEL -----------------
-    model = ConvNeXt(num_classes=config.CLASSES).to(device)
+    models = [
+        ConvNeXt(num_classes=config.CLASSES),
+        EfficientNetV2(num_classes=config.CLASSES),
+        ResNeXt(num_classes=config.CLASSES)
+        ]
+
+    optimizers = [
+        torch.optim.Adam(model.parameters(), lr=config.LR) 
+        for model in models
+        ]
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=config.LR)
 
+    metrics_set = {}
+    for model, optimizer in zip(models, optimizers):
+        metrics_result = pipeline.ran(model, dataset, device, criterion, optimizer)
+        metrics_set.add(metrics_result)
 
-    # ----------------- LOADERS & CHECKPOINT PREP -----------------
-    ckpt_path, best_ckpt_path, scaler_path, best_valid_avg_loss, start_epoch, model, optimizer = last_and_best(
-        model, optimizer, device
-        )
+    metrics_merged = metrics.merge(metrics_set)
+    metrics_merged_ranked = metrics.merged_rank(metrics_merged, reverse=True)
 
-    train_loader, val_loader, test_loader = dataset_split.subset(dataset, scaler_path)
-
-    writer = SummaryWriter(f"runs/{model.nameid}/exp_{config.EXPERIMENT_NAME}") # tensorboard --logdir=runs
-    sample_x, _ = next(iter(train_loader))
-    writer.add_graph(model, sample_x.to(device).float())
-
-
-    # ----------------- THE LOOP -----------------
-    for epoch in range(start_epoch, config.EPOCHS):
-
-        train_result = interface.run_epoch(model, device, train_loader, criterion, optimizer)
-        valid_result = interface.run_epoch(model, device, val_loader, criterion)
-
-        valid_avg_loss = valid_result["avg_loss"]
-        train_avg_loss = train_result["avg_loss"]
-
-        #save
-        #train_metrics = metrics.classification_metrics(train_result)
-        valid_metrics = metrics.classification_metrics(valid_result)
-        add_scalars(writer, valid_metrics, valid_avg_loss, train_avg_loss, epoch)
-        save(ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
-        
-        if valid_avg_loss < best_valid_avg_loss:
-            best_valid_avg_loss = valid_avg_loss
-            save(best_ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
-
-        #log
-        writer.add_scalar("LOSS/TRAIN", train_avg_loss, epoch)
-        writer.add_scalar("LOSS/VAL", valid_avg_loss, epoch)
-
-        print(f"Epoch {epoch+1}/{config.EPOCHS} | avg_train_loss: {train_avg_loss:.6f} | avg_val_loss: {valid_avg_loss:.6f}")
-    
-    writer.close()
-
-
-    # ----------------- EVAL -----------------
-    checkpoint = torch.load(best_ckpt_path, map_location=device)
-    model.load_state_dict(checkpoint["model_state"])
-
-    test_result = interface.run_epoch(model, device, test_loader, criterion)
-    test_metrics = metrics.classification_metrics(test_result)
-
-    metrics.print_metrics(test_result, test_metrics, checkpoint)
-
-    
 
 
 if __name__ == "__main__":

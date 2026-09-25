@@ -4,11 +4,11 @@ from torch import nn
 from torch.utils.tensorboard import SummaryWriter
 
 import config
-from utilities.checkpoint import last_and_best, save
-from utilities.tensorboard_myutils import add_scalars
-import utilities.interface as interface
-import utilities.metrics as metrics
-import utilities.dataset_split as dataset_split
+from pipeline_utilities.checkpoint import last_and_best, save
+from pipeline_utilities.tensorboard_myutils import add_scalars
+import pipeline_utilities.interface as interface
+import pipeline_utilities.metrics as metrics
+import pipeline_utilities.dataset_split as dataset_split
 
 def ran(model:nn.Module, dataset, device:torch.device, criterion, optimizer):
     model.to(device)
@@ -35,7 +35,7 @@ def ran(model:nn.Module, dataset, device:torch.device, criterion, optimizer):
 
         #save
         #train_metrics = metrics.classification_metrics(train_result)
-        valid_metrics = metrics.calculate(valid_result)
+        valid_metrics = metrics.calculate(valid_result, dataset.classes, model.nameid)
         add_scalars(writer, valid_metrics, valid_avg_loss, train_avg_loss, epoch)
         save(ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
         
@@ -59,6 +59,6 @@ def ran(model:nn.Module, dataset, device:torch.device, criterion, optimizer):
     test_result = interface.run_epoch(model, device, test_loader, criterion)
     test_metrics = metrics.calculate(test_result, dataset.classes, model.nameid)
 
-    metrics.print(test_metrics, checkpoint)
+    metrics.print_all(test_metrics, checkpoint)
 
     return test_metrics

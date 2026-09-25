@@ -4,7 +4,7 @@ import rasterio
 from torchvision.datasets import DatasetFolder
 from torchvision.datasets.folder import has_file_allowed_extension
 
-def __default_loader(path):
+def _default_loader(path):
     with rasterio.open(path) as src:
         image = src.read()
 
@@ -17,7 +17,7 @@ class EuroSATMS(DatasetFolder):
         root,
         transform=None,
         target_transform=None,
-        loader=__default_loader,
+        loader=_default_loader,
     ):
         super().__init__(
             root=root,

@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 
 import numpy as np
 from sklearn.metrics import (
@@ -15,27 +14,6 @@ from sklearn.metrics import (
 import torch
 
 import config
-
-@dataclass(frozen=True)
-class MetricSpec:
-    key: str
-    label: str
-    higher_is_better: bool
-    fmt: str = "0.000"
-    abs_threshold: float = 0.02 # deliberately configurable tresholds (not for statistical significance tests)
-    relative_threshold: float = 0.02
-    rankable: bool = True
-
-METRIC_SPECS: tuple[MetricSpec, ...] = (
-    MetricSpec("avg_loss", "Average loss", False, "0.0000", 0.02, 0.02),
-    MetricSpec("accuracy", "Accuracy", True, "0.0000", 0.02, 0.02),
-    MetricSpec("balanced_accuracy", "Balanced accuracy", True, "0.0000", 0.02, 0.02),
-    MetricSpec("precision", "Macro precision", True, "0.0000", 0.02, 0.02),
-    MetricSpec("recall", "Macro recall", True, "0.0000", 0.02, 0.02),
-    MetricSpec("f1", "Macro F1", True, "0.0000", 0.02, 0.02),
-    MetricSpec("mcc", "MCC", True, "0.0000", 0.05, 0.02),
-    MetricSpec("auc", "Macro AUC", True, "0.0000", 0.02, 0.02),
-)
 
 
 def calculate(result, class_names, nameid):
@@ -115,33 +93,42 @@ def merge(metrics_set) -> dict[str, list[any]]:# what a lovely usage example of 
     return metrics_merged
 
 
-def merged_rank(metrics_merged, reverse=True):
+def merged_rank(metrics_merged):
     metrics_merged_ranked = {}
     for key, values in metrics_merged.items():
-        if any(isinstance(val, str) for val in values):
-            metrics_merged_ranked[key] = None
+        if key in config.METRIC_DIRECTIONS:
+            if any(isinstance(val, str) for val in values):
+                metrics_merged_ranked[key] = None
 
-        elif all(isinstance(val, dict) for val in values):
-            metrics_merged_ranked[key] = __recursive_rank(values, reverse)
+            elif all(isinstance(val, dict) for val in values):
+                metrics_merged_ranked[key] = __recursive_rank(values, config.METRIC_DIRECTIONS[key])
 
-        elif not any(isinstance(val, (list, np.ndarray, dict)) for val in values):
-            metrics_merged_ranked[key] = sorted(range(len(values)), key = lambda i: values[i], reverse=reverse)
-        
+            elif not any(isinstance(val, (list, np.ndarray, dict)) for val in values):
+                metrics_merged_ranked[key] = __rank(values, config.METRIC_DIRECTIONS[key])
+            
         else:
             metrics_merged_ranked[key] = None
 
     return metrics_merged_ranked
 
 
-def __recursive_rank(values, reverse=True):
+def __recursive_rank(values, higher_is_better=True):
     if all(isinstance(v, dict) for v in values): # check for inner classes
         keys = set().union(*(v.keys() for v in values))
         return {
             key: __recursive_rank(
                 [v[key] for v in values if key in v],
-                reverse=reverse
+                higher_is_better=higher_is_better
             )
             for key in keys
         }
     
-    return sorted(range(len(values)), key = lambda i: values[i], reverse=reverse)
+    return __rank(values, higher_is_better)
+
+
+def __rank(values, higher_is_better):
+    if any(v != v for v in values):
+        return None
+
+    ordered = sorted(values, reverse=higher_is_better)
+    return [ordered.index(value) for value in values]

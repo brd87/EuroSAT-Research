@@ -2,10 +2,10 @@ import torch
 from torch import nn
 
 import config
-import utilities.pipeline as pipeline
-import utilities.dataset_get as dataset_get
-import utilities.metrics as metrics
-import utilities.report as report
+import pipeline_utilities.pipeline as pipeline
+import pipeline_utilities.dataset_get as dataset_get
+import pipeline_utilities.metrics as metrics
+import reporting.report as report
 
 from models.ConvNeXt import ConvNeXt
 from models.EfficientNetV2 import EfficientNetV2
@@ -18,13 +18,13 @@ def main():
     print("Device:", device)
 
     # ----------------- DATA -----------------
-    dataset = dataset_get.eurosat_rgb()
-
+    #dataset = dataset_get.eurosat_rgb()
+    dataset = dataset_get.eurosat_ms()
     # ----------------- MODEL -----------------
     models = [
-        ConvNeXt(num_classes=config.CLASSES),
-        EfficientNetV2(num_classes=config.CLASSES),
-        ResNeXt(num_classes=config.CLASSES)
+        ConvNeXt(),
+        EfficientNetV2(),
+        ResNeXt()
         ]
 
     optimizers = [
@@ -34,14 +34,17 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
 
-    metrics_set = {}
+    metrics_set = []
     for model, optimizer in zip(models, optimizers):
         metrics_result = pipeline.ran(model, dataset, device, criterion, optimizer)
-        metrics_set.add(metrics_result)
+        metrics_set.append(metrics_result)
 
     metrics_merged = metrics.merge(metrics_set)
-    metrics_merged_ranked = metrics.merged_rank(metrics_merged, reverse=True)
+    metrics_merged_ranked = metrics.merged_rank(metrics_merged)
 
+    report.build_excel_report(metrics_merged)
+    report.build_pdf_report(metrics_merged, metrics_merged_ranked)
+    report.build_png_dashboard(metrics_merged, metrics_merged_ranked)
 
 
 if __name__ == "__main__":

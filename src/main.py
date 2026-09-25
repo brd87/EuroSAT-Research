@@ -18,33 +18,35 @@ def main():
     print("Device:", device)
 
     # ----------------- DATA -----------------
-    #dataset = dataset_get.eurosat_rgb()
-    dataset = dataset_get.eurosat_ms()
-    # ----------------- MODEL -----------------
-    models = [
-        ConvNeXt(),
-        EfficientNetV2(),
-        ResNeXt()
+    material =[
+        dataset_get.eurosat_rgb(),
+        dataset_get.eurosat_ms()
         ]
 
-    optimizers = [
-        torch.optim.Adam(model.parameters(), lr=config.LR) 
-        for model in models
+    # ----------------- MODEL -----------------
+    models = [
+        ConvNeXt,
+        EfficientNetV2,
+        ResNeXt
         ]
 
     criterion = nn.CrossEntropyLoss()
 
-    metrics_set = []
-    for model, optimizer in zip(models, optimizers):
-        metrics_result = pipeline.ran(model, dataset, device, criterion, optimizer)
-        metrics_set.append(metrics_result)
+    for dataset, ds_type in material:
+        metrics_set = []
+        in_ch = dataset[0][0].shape[0]      
 
-    metrics_merged = metrics.merge(metrics_set)
-    metrics_merged_ranked = metrics.merged_rank(metrics_merged)
+        for model_cls in models:
+            model = model_cls(in_channels=in_ch)
+            metrics_result = pipeline.ran(model, dataset, device, criterion)
+            metrics_set.append(metrics_result)
 
-    report.build_excel_report(metrics_merged)
-    report.build_pdf_report(metrics_merged, metrics_merged_ranked)
-    report.build_png_dashboard(metrics_merged, metrics_merged_ranked)
+        metrics_merged = metrics.merge(metrics_set)
+        metrics_merged_ranked = metrics.merged_rank(metrics_merged)
+
+        report.build_excel_report(metrics_merged, ds_type)
+        report.build_pdf_report(metrics_merged, metrics_merged_ranked, ds_type)
+        report.build_png_dashboard(metrics_merged, metrics_merged_ranked, ds_type)
 
 
 if __name__ == "__main__":

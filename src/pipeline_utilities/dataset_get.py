@@ -22,7 +22,7 @@ def eurosat_rgb(root:Path = None):
         transform=transform,
     )
 
-    return dataset
+    return (dataset, "_rgb")
 
 def eurosat_ms(root:Path = None):
     if root is None:
@@ -32,5 +32,5 @@ def eurosat_ms(root:Path = None):
     download(root)
 
     dataset = EuroSATMS(root=root)
-    return dataset
+    return (dataset, "_ms")
 

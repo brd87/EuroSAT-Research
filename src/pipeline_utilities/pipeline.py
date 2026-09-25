@@ -10,11 +10,11 @@ import pipeline_utilities.interface as interface
 import pipeline_utilities.metrics as metrics
 import pipeline_utilities.dataset_split as dataset_split
 
-def ran(model:nn.Module, dataset, device:torch.device, criterion, optimizer):
+def ran(model:nn.Module, dataset, device:torch.device, criterion):
     model.to(device)
     # ----------------- LOADERS & CHECKPOINT PREP -----------------
-    ckpt_path, best_ckpt_path, scaler_path, best_valid_avg_loss, start_epoch, model, optimizer = last_and_best(
-        model, optimizer, device
+    ckpt_path, best_ckpt_path, scaler_path, best_valid_avg_loss, start_epoch, model, model.optimizer = last_and_best(
+        model, model.optimizer, device
         )
 
     train_loader, val_loader, test_loader = dataset_split.subset(dataset, scaler_path)
@@ -27,7 +27,7 @@ def ran(model:nn.Module, dataset, device:torch.device, criterion, optimizer):
     # ----------------- THE LOOP -----------------
     for epoch in range(start_epoch, config.EPOCHS):
 
-        train_result = interface.run_epoch(model, device, train_loader, criterion, optimizer)
+        train_result = interface.run_epoch(model, device, train_loader, criterion, model.optimizer)
         valid_result = interface.run_epoch(model, device, val_loader, criterion)
 
         valid_avg_loss = valid_result["avg_loss"]
@@ -37,11 +37,11 @@ def ran(model:nn.Module, dataset, device:torch.device, criterion, optimizer):
         #train_metrics = metrics.classification_metrics(train_result)
         valid_metrics = metrics.calculate(valid_result, dataset.classes, model.nameid)
         add_scalars(writer, valid_metrics, valid_avg_loss, train_avg_loss, epoch)
-        save(ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
+        save(ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, model.optimizer, scaler_path)
         
         if valid_avg_loss < best_valid_avg_loss:
             best_valid_avg_loss = valid_avg_loss
-            save(best_ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, optimizer, scaler_path)
+            save(best_ckpt_path, model, epoch, train_avg_loss, valid_avg_loss, model.optimizer, scaler_path)
 
         #log
         writer.add_scalar("LOSS/TRAIN", train_avg_loss, epoch)

@@ -10,11 +10,11 @@ import pipeline_utilities.interface as interface
 import pipeline_utilities.metrics as metrics
 import pipeline_utilities.dataset_split as dataset_split
 
-def ran(model:nn.Module, dataset, device:torch.device, criterion):
+def ran(model:nn.Module, dataset, device:torch.device, criterion, ds_name):
     model.to(device)
     # ----------------- LOADERS & CHECKPOINT PREP -----------------
     ckpt_path, best_ckpt_path, scaler_path, best_valid_avg_loss, start_epoch, model, model.optimizer = last_and_best(
-        model, model.optimizer, device
+        model, model.optimizer, device, ds_name
         )
 
     train_loader, val_loader, test_loader = dataset_split.subset(dataset, scaler_path)

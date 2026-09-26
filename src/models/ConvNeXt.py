@@ -27,6 +27,7 @@ class ConvNeXt(nn.Module):
     def forward(self, x):
         return self.backbone(x)
 
+    @staticmethod
     def _adapt_first_conv(conv: nn.Conv2d, in_channels: int, rgb_idx=(3, 2, 1)) -> nn.Conv2d:
         new = nn.Conv2d(
             in_channels, conv.out_channels,

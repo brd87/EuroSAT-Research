@@ -4,14 +4,14 @@ from torch import nn
 
 import config
 
-def last_and_best(model, optimizer, device, zero_epoch=True):
+def last_and_best(model, optimizer, device, ds_name, zero_epoch=True):
     model_nameid = model.nameid
     ckpt_dir_path = f"checkpoints/{model_nameid}/{config.EXPERIMENT_NAME}"
     os.makedirs(ckpt_dir_path, exist_ok=True)
 
-    ckpt_path = os.path.join(ckpt_dir_path, "last.pt")
-    best_ckpt_path = os.path.join(ckpt_dir_path, "best.pt")
-    scaler_path = os.path.join(ckpt_dir_path, "scaler.pkl")
+    ckpt_path = os.path.join(ckpt_dir_path, f"last{ds_name}.pt")
+    best_ckpt_path = os.path.join(ckpt_dir_path, f"best{ds_name}.pt")
+    scaler_path = os.path.join(ckpt_dir_path, f"scaler{ds_name}.pkl")
 
     best_valid_avg_loss = float("inf")
     start_epoch = 0
